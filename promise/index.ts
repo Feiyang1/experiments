@@ -65,7 +65,33 @@ export class Wish {
             errorCb = error;
         }
 
-        this.subscribers.push(new Subscriber(successCb, errorCb));
+
+        let deferredResolve, deferredReject;
+        const nextWish = new Wish(function executor(resolve, reject) {
+            deferredResolve = resolve;
+            deferredReject = reject;
+        });
+
+        this.subscribers.push(new Subscriber(function (val: any) {
+            if (!successCb) {
+                deferredResolve(val);
+                return;
+            }
+
+            const successVal = successCb(val);
+            deferredResolve(successVal);
+        }, function (val: any) {
+            if (!errorCb) {
+                deferredReject(val);
+                return;
+            }
+
+            const errorVal = errorCb(val);
+            deferredReject(errorVal);
+        }));
+
+
+        return nextWish;
     }
 
     resolve(val: any) {
