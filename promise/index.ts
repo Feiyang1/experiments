@@ -26,7 +26,7 @@ class Subscriber {
         }
         this.isCalled = true;
         if (this.resolveCb) {
-            setTimeout(() => this.resolveCb.apply(undefined, val));
+            setTimeout(() => this.resolveCb.apply(undefined, [val]));
         }
     }
 
@@ -38,13 +38,14 @@ class Subscriber {
         this.isCalled = true;
 
         if (this.rejectCb) {
-            setTimeout(() => this.rejectCb.apply(undefined, val));
+            setTimeout(() => this.rejectCb.apply(undefined, [val]));
         }
     }
 }
 
 export class Wish {
     private state: State = State.Pending;
+    private val: any;
     private subscribers: Subscriber[] = [];
 
     constructor(func: Executor) {
@@ -72,7 +73,7 @@ export class Wish {
             deferredReject = reject;
         });
 
-        this.subscribers.push(new Subscriber(function (val: any) {
+        const newSuccessCb = function (val: any) {
             if (!successCb) {
                 deferredResolve(val);
                 return;
@@ -80,7 +81,9 @@ export class Wish {
 
             const successVal = successCb(val);
             deferredResolve(successVal);
-        }, function (val: any) {
+        };
+
+        const newErrorCb = function (val: any) {
             if (!errorCb) {
                 deferredReject(val);
                 return;
@@ -88,8 +91,16 @@ export class Wish {
 
             const errorVal = errorCb(val);
             deferredReject(errorVal);
-        }));
+        };
 
+        // the promise is already resolved.
+        if (this.state === State.Fullfilled) {
+            setTimeout(() => newSuccessCb(this.val));
+        } else if (this.state === State.Rejected) {
+            setTimeout(() => newErrorCb(this.val));
+        } else {
+            this.subscribers.push(new Subscriber(newSuccessCb, newErrorCb));
+        }
 
         return nextWish;
     }
@@ -125,6 +136,7 @@ export class Wish {
                 then.apply(val, [this.resolve, this.reject]);
             } else {
                 this.state = State.Fullfilled;
+                this.val = val;
 
                 // resolve directly
                 for (const sub of this.subscribers) {
@@ -135,6 +147,7 @@ export class Wish {
         }
 
         this.state = State.Fullfilled;
+        this.val = val;
 
         // resolve directly
         for (const sub of this.subscribers) {
@@ -149,6 +162,7 @@ export class Wish {
         }
 
         this.state = State.Rejected;
+        this.val = val;
         for (const sub of this.subscribers) {
             sub.callRejectAsync(val);
         }
