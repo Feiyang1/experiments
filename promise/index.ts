@@ -37,7 +37,7 @@ class Subscriber {
         }
         this.isCalled = true;
 
-        if(this.rejectCb) {
+        if (this.rejectCb) {
             setTimeout(() => this.rejectCb.apply(undefined, val));
         }
     }
@@ -53,11 +53,27 @@ export class Wish {
         func.apply(undefined, [this.resolve, this.reject]);
     }
 
-    then(success?: CallBack, error?: CallBack) {
-        this.subscribers.push(new Subscriber(success, error));
+    then(success?: any, error?: any) {
+
+        let successCb = undefined;
+        if (success && typeof success === "function") {
+            successCb = success;
+        }
+
+        let errorCb = undefined;
+        if (error && typeof error === "function") {
+            errorCb = error;
+        }
+
+        this.subscribers.push(new Subscriber(successCb, errorCb));
     }
 
     resolve(val: any) {
+        // can't resolve a resolved/rejected promise
+        if (this.state !== State.Pending) {
+            return;
+        }
+
         if (val === this) {
             this.reject(TypeError("Can't resolve with self!"));
             return;
@@ -84,6 +100,14 @@ export class Wish {
     }
 
     reject(val: any) {
+        // can't reject a resolved/rejected promise
+        if (this.state !== State.Pending) {
+            return;
+        }
 
+        this.state = State.Rejected;
+        for (const sub of this.subscribers) {
+            sub.callRejectAsync(val);
+        }
     }
 };
