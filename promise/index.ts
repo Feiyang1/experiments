@@ -82,12 +82,29 @@ export class Wish {
         // if resolved with a promise (wish)
         if (val instanceof Wish) {
 
+            val.then(this.resolve, this.reject);
             return;
         }
 
         // if resolved with a promise like object
-        if (val.then) {
+        if (typeof val === 'object' || typeof val === 'function') {
+            let then = undefined;
+            try {
+                then = val.then;
+            } catch (e) {
+                this.reject(e);
+            }
 
+            if (typeof then === 'function') {
+                then.apply(val, [this.resolve, this.reject]);
+            } else {
+                this.state = State.Fullfilled;
+
+                // resolve directly
+                for (const sub of this.subscribers) {
+                    sub.callResolveAsync(val);
+                }
+            }
             return;
         }
 
