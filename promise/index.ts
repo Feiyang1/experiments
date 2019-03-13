@@ -143,10 +143,25 @@ export class Wish {
             }
 
             if (typeof then === 'function') {
+                let counter = 0;
                 try {
-                    then.apply(val, [this.resolve, this.reject]);
+                    then.apply(val, [
+                        (v) => {
+                            // only take the first call to resolve. ignore subsequent calls
+                            if (counter !== 0) {
+                                return;
+                            }
+                            counter++;
+                            this.resolve(v);
+                        }, (v) => {
+                            if (counter !== 0) {
+                                return;
+                            }
+                            counter++;
+                            this.reject(v);
+                        }]);
                 } catch (e) {
-                    if (this.state === State.Pending) {
+                    if (this.state === State.Pending && counter === 0) {
                         this.reject(e);
                     }
                 }
