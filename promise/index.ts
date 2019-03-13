@@ -134,7 +134,7 @@ export class Wish {
         }
 
         // if resolved with a promise like object
-        if (typeof val === 'object' || typeof val === 'function') {
+        if ((val !== null && typeof val === 'object') || typeof val === 'function') {
             let then = undefined;
             try {
                 then = val.then;
@@ -143,7 +143,13 @@ export class Wish {
             }
 
             if (typeof then === 'function') {
-                then.apply(val, [this.resolve, this.reject]);
+                try {
+                    then.apply(val, [this.resolve, this.reject]);
+                } catch (e) {
+                    if (this.state === State.Pending) {
+                        this.reject(e);
+                    }
+                }
             } else {
                 this.state = State.Fullfilled;
                 this.val = val;
