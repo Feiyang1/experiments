@@ -79,8 +79,13 @@ export class Wish {
                 return;
             }
 
-            const successVal = successCb(val);
-            deferredResolve(successVal);
+            try {
+                const successVal = successCb(val);
+                deferredResolve(successVal);
+            } catch (e) {
+                deferredReject(e);
+            }
+
         };
 
         const newErrorCb = function (val: any) {
@@ -89,8 +94,13 @@ export class Wish {
                 return;
             }
 
-            const errorVal = errorCb(val);
-            deferredReject(errorVal);
+            try {
+                const errorVal = errorCb(val);
+                deferredResolve(errorVal);
+            } catch (e) {
+                deferredReject(e);
+            }
+
         };
 
         // the promise is already resolved.
